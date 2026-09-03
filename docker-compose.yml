@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: ard-postgres
+    environment:
+      POSTGRES_DB: ard
+      POSTGRES_USER: ard
+      POSTGRES_PASSWORD: ard_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - ard_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ard -d ard"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+# DBGate
+  dbgate:
+    image: dbgate/dbgate:latest
+    ports:
+      - "5000:3000"
+
+volumes:
+  ard_pgdata:
