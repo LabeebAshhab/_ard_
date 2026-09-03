@@ -196,3 +196,7 @@ logs/                 ard.log and dry-run .eml files
 ```
 
 See `ARD_Setup_Guide.pdf` for a step-by-step walkthrough with screenshots.
+
+## License
+
+Released under the [MIT License](LICENSE).
