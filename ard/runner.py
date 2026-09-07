@@ -32,11 +32,11 @@ def run_task(conn: psycopg.Connection, task: dict, schedule_id: int) -> dict:
     for query in queries:
         log_id = db.log_run_started(conn, task_id, schedule_id)
         try:
-            columns, rows = db.run_source_query(
+            result_sets = db.run_source_query(
                 config.dsn_for_target(query["db_target"]), query["query_text"]
             )
             csv_path, row_count = export_to_csv(
-                columns, rows, task["output_prefix"], query["query_id"]
+                result_sets, task["output_prefix"], query["query_id"]
             )
             db.log_export_success(conn, log_id, str(csv_path), row_count)
             attachments.append(csv_path)
@@ -62,6 +62,9 @@ def run_task(conn: psycopg.Connection, task: dict, schedule_id: int) -> dict:
         db.log_delivered(conn, exported_log_ids)
         log.info("task %s delivered to %s recipient(s)", task_id, len(recipients))
         sent = True
+        # After Delivery the CSV files are deleted. 
+        
+        _cleanup_files(attachments)
     except Exception as exc:
         for log_id in exported_log_ids:
             db.log_failure(conn, log_id, f"delivery failed - {type(exc).__name__}: {exc}")
@@ -69,6 +72,16 @@ def run_task(conn: psycopg.Connection, task: dict, schedule_id: int) -> dict:
         sent = False
 
     return {"task_id": task_id, "files": attachments, "sent": sent}
+
+
+def _cleanup_files(paths: list[Path]) -> None:
+    """Delete the local CSV files."""
+    for path in paths:
+        try:
+            path.unlink(missing_ok=True)
+            log.info("deleted local CSV after SENT: %s", path.name)
+        except OSError as exc:
+            log.warning("could not delete %s: %s", path, exc)
 
 
 def run_task_by_id(conn: psycopg.Connection, task_id: int) -> dict:

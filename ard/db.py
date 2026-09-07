@@ -8,6 +8,7 @@ from typing import Any, Iterator
 import psycopg
 from psycopg.rows import dict_row
 
+from . import sql_guard
 from .config import config
 
 
@@ -138,15 +139,26 @@ def active_recipients(conn: psycopg.Connection, config_id: int) -> list[dict]:
     )
 
 
-def run_source_query(dsn: str, query_text: str) -> tuple[list[str], list[tuple]]:
-    """A task's SQL on its target database which return (columns, rows)."""
+def run_source_query(dsn: str, query_text: str) -> list[tuple[list[str], list[tuple]]]:
+    """Run a task's SQL on its target database and return one result set per
+    statement, as (columns, rows) pairs.
+
+    The field may hold many statements separated by ';'. Every one is validated as
+    read-only first (sql_guard), and the whole thing runs inside a READ ONLY
+    transaction so the database itself refuses any write that slipped through.
+    """
+    statements = sql_guard.assert_read_only(query_text)
+    result_sets: list[tuple[list[str], list[tuple]]] = []
     with psycopg.connect(dsn) as conn:
+        conn.read_only = True  # Postgres rejects any data-modifying statement.
         conn.execute(f"SET TIME ZONE '{config.timezone}'")
         with conn.cursor() as cur:
-            cur.execute(query_text)
-            columns = [c.name for c in (cur.description or [])]
-            rows = cur.fetchall() if cur.description else []
-    return columns, rows
+            for statement in statements:
+                cur.execute(statement)
+                if cur.description:
+                    columns = [c.name for c in cur.description]
+                    result_sets.append((columns, cur.fetchall()))
+    return result_sets
 
 
 # writing the log into exe_table
@@ -188,13 +200,18 @@ def log_failure(conn: psycopg.Connection, log_id: int, error_message: str) -> No
 
 
 def log_delivered(conn: psycopg.Connection, log_ids: list[int]) -> None:
-    """Stamp delivered_at with the time the mail was accepted by the SMTP server."""
+    """Stamp delivered_at with the time the mail was accepted by the SMTP server.
+
+    The local CSV is deleted once the mail is out, so csv_file_path is cleared
+    here too - keeping a path to a file that no longer exists would only mislead.
+    """
     if not log_ids:
         return
     with conn.cursor() as cur:
         cur.execute(
             "UPDATE execution_log SET status = 'SENT', "
-            "delivered_at = CURRENT_TIMESTAMP WHERE log_id = ANY(%s)",
+            "delivered_at = CURRENT_TIMESTAMP, csv_file_path = NULL "
+            "WHERE log_id = ANY(%s)",
             (log_ids,),
         )
     conn.commit()

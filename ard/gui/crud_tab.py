@@ -4,7 +4,7 @@ import tkinter as tk
 from datetime import datetime, time
 from tkinter import messagebox, ttk
 
-from .. import crud, db
+from .. import crud, db, sql_guard
 from .spec import Field, TableSpec
 
 TEXTAREA_HEIGHT = 4
@@ -182,6 +182,18 @@ class CrudTab(ttk.Frame):
     def save(self) -> None:
         try:
             values = self._collect()
+        except Exception as exc:
+            messagebox.showerror("Save failed", str(exc), parent=self)
+            return
+
+        # The query field must never be able to change the target database.
+        if self.spec.table == "query":
+            problem = sql_guard.check_read_only(values.get("query_text") or "")
+            if problem:
+                messagebox.showwarning("Query not allowed", problem, parent=self)
+                return
+
+        try:
             with db.connect() as conn:
                 if self.selected_pk is None:
                     self.selected_pk = crud.insert_row(conn, self.spec.table, values)

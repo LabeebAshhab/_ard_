@@ -1,8 +1,4 @@
-"""Generic insert / update / delete for the five configuration tables.
-
-The GUI is the only caller. Column names never come from user input - they are taken
-from the table specs in ard/gui/spec.py - so building the SQL by interpolation is safe.
-"""
+"""Generic insert / update / delete for the five configuration tables."""
 
 import psycopg
 
