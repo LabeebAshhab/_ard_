@@ -18,7 +18,9 @@ The project ships two front ends over the same `ard` package:
 2. For each active schedule whose `schedule_time` falls in the current window and whose
    DAILY / WEEKLY / MONTHLY rule matches today, ARD runs every active `QUERY` of that
    task against the database named by the query's `db_target`.
-3. Each result set is written to `output/<output_prefix>_q<query_id>_<timestamp>.csv`.
+3. Each query is written to its own `output/<output_name>_<yyyymmdd>.csv`, where
+   `output_name` is the file-name prefix set on that query (a query left blank
+   falls back to `query_<query_id>`).
 4. All of a task's CSVs are attached to a single e-mail built from its `EMAIL_CONFIG`
    and active `RECIPIENT` rows.
 5. `EXECUTION_LOG` records each query's progress: `RUNNING` at the start, then `SUCCESS`
@@ -96,10 +98,18 @@ The defaults match the Docker database and enable SMTP dry-run mode. Key setting
 
 ### 4. Build the database schema
 
-Create the six tables (add `--seed` to also load dummy data for a quick demo):
+Create the six (empty) tables:
 
 ```bash
-python -m ard --init-db --seed
+python -m ard --init-db
+```
+
+For a quick demo, load the bundled dummy data instead. `seed.py` is a standalone
+script (kept out of the app code) that **wipes every table** and reloads the demo
+dataset — schema plus sample rows in one step:
+
+```bash
+python seed.py
 ```
 
 ## Using the GUI
@@ -117,8 +127,8 @@ form, **Save** inserts or updates, and **Delete** removes the row and its depend
 
 | Tab             | What you do there                                                                 |
 | --------------- | --------------------------------------------------------------------------------- |
-| 1. Task         | Add a task, name it, set the CSV output prefix, switch it on or off.               |
-| 2. Query        | Write the SQL for a task. One task can hold several queries — each becomes its own CSV. |
+| 1. Task         | Add a task, name it, switch it on or off.                                         |
+| 2. Query        | Write the SQL for a task and give it an **Output name** (the CSV file-name prefix; `_<yyyymmdd>.csv` is added automatically). One task can hold several queries — each becomes its own named CSV. |
 | 3. Schedule     | Set a time of day plus DAILY / WEEKLY / MONTHLY and the day rule.                  |
 | 4. Email config | Subject, body and signature for the task's e-mail.                                 |
 | 5. Recipient    | TO / CC / BCC addresses; unchecking `Active` keeps a row for history but skips it. |
@@ -140,8 +150,8 @@ WEEKLY, and a day-of-month number or `LAST` for MONTHLY.
 
 | Command                          | What it does                                              |
 | -------------------------------- | -------------------------------------------------------- |
-| `python -m ard --init-db`        | Create the six tables.                                   |
-| `python -m ard --init-db --seed` | Create the tables and load dummy data.                   |
+| `python -m ard --init-db`        | Create the six (empty) tables.                           |
+| `python seed.py`                 | Wipe every table and reload the bundled dummy data.      |
 | `python -m ard`                  | Run the scheduler continuously (poll forever).           |
 | `python -m ard --poll-once`      | Run a single scheduler tick and exit.                    |
 | `python -m ard --run-task N`     | Run task `N` now, ignoring its schedule time.            |
@@ -160,8 +170,8 @@ of the visible headers).
 
 | Table           | Holds                                                                       |
 | --------------- | --------------------------------------------------------------------------- |
-| `task`          | One report definition: name, CSV output prefix, active flag.                |
-| `query`         | The SQL for a task and the `db_target` it runs against (many per task).     |
+| `task`          | One report definition: name, description, active flag.                      |
+| `query`         | The SQL for a task, its CSV `output_name` prefix, and the `db_target` it runs against (many per task). |
 | `schedule`      | Time of day, frequency (DAILY/WEEKLY/MONTHLY) and day rule for a task.       |
 | `email_config`  | Subject, body and signature — one row per task.                             |
 | `recipient`     | TO / CC / BCC addresses linked to a task's `email_config`.                  |
@@ -171,6 +181,7 @@ of the visible headers).
 
 ```
 gui.py                shortcut launcher: python gui.py
+seed.py               standalone dummy-data loader (wipe + reload demo data)
 docker-compose.yml    Postgres 16 + DBGate
 .env.example          template for your local .env
 requirements.txt      Python dependencies
@@ -190,7 +201,7 @@ ard/
     run_tab.py        scheduler controls, live log, EXECUTION_LOG viewer
 sql/
   schema.sql          the 6-table schema
-  seed_data.sql       dummy data for --seed
+  seed_data.sql       dummy data loaded by seed.py
 output/               generated CSV files
 logs/                 ard.log and dry-run .eml files
 ```

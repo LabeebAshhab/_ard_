@@ -35,8 +35,6 @@ TASK = TableSpec(
     fields=[
         Field("task_name", "Task name", required=True, width=26),
         Field("description", "Description", width=34),
-        Field("output_prefix", "Output prefix", required=True,
-              width=18),
         Field("is_active", "Active", kind="bool", default=True, width=8),
     ],
 )
@@ -46,6 +44,7 @@ QUERY = TableSpec(
     fields=[
         Field("task_id", "Task", kind="fk", lookup="task", required=True, width=22),
         Field("query_text", "SQL", kind="textarea", required=True, width=60),
+        Field("output_name", "Output name (file prefix)", width=22),
         Field("db_target", "DB target", required=True, default="core_db", width=16),
         Field("version_no", "Version", kind="int", default=1, width=8),
         Field("is_active", "Active", kind="bool", default=True, width=8),

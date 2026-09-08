@@ -45,7 +45,7 @@ def due_schedules(conn: psycopg.Connection, window_start: time, window_end: time
 
     sql = f"""
         SELECT s.schedule_id, s.task_id, s.schedule_time, s.frequency, s.day_spec,
-               t.task_name, t.output_prefix
+               t.task_name
         FROM schedule s
         JOIN task t ON t.task_id = s.task_id
         WHERE s.is_active AND t.is_active AND {time_clause}
@@ -89,7 +89,7 @@ def active_queries(conn: psycopg.Connection, task_id: int) -> list[dict]:
     return fetch_all(
         conn,
         """
-        SELECT query_id, task_id, query_text, db_target, version_no
+        SELECT query_id, task_id, query_text, output_name, db_target, version_no
         FROM query
         WHERE task_id = %s AND is_active
         ORDER BY query_id
@@ -101,7 +101,7 @@ def active_queries(conn: psycopg.Connection, task_id: int) -> list[dict]:
 def task_by_id(conn: psycopg.Connection, task_id: int) -> dict | None:
     return fetch_one(
         conn,
-        "SELECT task_id, task_name, description, output_prefix, is_active "
+        "SELECT task_id, task_name, description, is_active "
         "FROM task WHERE task_id = %s",
         (task_id,),
     )

@@ -98,7 +98,8 @@ def main() -> int:
         messagebox.showerror(
             "Cannot reach the database",
             f"{exc}\n\nStart Postgres (docker compose up -d) and run\n"
-            f"python -m ard --init-db --seed\nin {Path(__file__).parents[2]}",
+            f"python -m ard --init-db  (or python seed.py for demo data)\n"
+            f"in {Path(__file__).parents[2]}",
         )
         return 1
 

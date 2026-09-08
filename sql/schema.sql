@@ -18,20 +18,22 @@ CREATE TYPE recipient_type_enum AS ENUM ('TO', 'CC', 'BCC');
 CREATE TYPE run_status_enum     AS ENUM ('RUNNING', 'SUCCESS', 'FAILED', 'SENT');
 
 CREATE TABLE task (
-    task_id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    task_name     VARCHAR(120) NOT NULL,
-    description   VARCHAR(255),
-    output_prefix VARCHAR(80)  NOT NULL,
-    is_active     BOOLEAN      NOT NULL DEFAULT TRUE
+    task_id     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    task_name   VARCHAR(120) NOT NULL,
+    description VARCHAR(255),
+    is_active   BOOLEAN      NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE query (
-    query_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    task_id    BIGINT       NOT NULL REFERENCES task(task_id) ON DELETE CASCADE,
-    query_text TEXT         NOT NULL,
-    db_target  VARCHAR(120) NOT NULL,
-    version_no INT          NOT NULL DEFAULT 1,
-    is_active  BOOLEAN      NOT NULL DEFAULT TRUE
+    query_id    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    task_id     BIGINT       NOT NULL REFERENCES task(task_id) ON DELETE CASCADE,
+    query_text  TEXT         NOT NULL,
+    -- File-name prefix for this query's CSV. The run appends _<yyyymmdd>.csv, so
+    -- the user gives only the prefix. Blank falls back to query_<query_id>.
+    output_name VARCHAR(120),
+    db_target   VARCHAR(120) NOT NULL,
+    version_no  INT          NOT NULL DEFAULT 1,
+    is_active   BOOLEAN      NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE schedule (

@@ -25,23 +25,24 @@ INSERT INTO total_transaction (txn_date, customer, channel, amount, status) VALU
   ('2026-04-30', 'Nagad Merchant 7', 'AGENT', 130450.90, 'SUCCESS');
 
 -- ---------------------------------------------------------------------- task
-INSERT INTO task (task_name, description, output_prefix, is_active) VALUES
-  ('Daily Transactions',    'Daily transaction dump for the ops team',    'daily_txn',      TRUE),
-  ('Weekly Channel Summary','Channel-wise weekly totals for management',  'weekly_channel', TRUE),
-  ('Monthly Failed Report', 'All failed transactions of the month',       'monthly_failed', TRUE),
-  ('Retired Legacy Report', 'Kept for history, no longer scheduled',      'legacy',         FALSE);
+INSERT INTO task (task_name, description, is_active) VALUES
+  ('Daily Transactions',    'Daily transaction dump for the ops team',    TRUE),
+  ('Weekly Channel Summary','Channel-wise weekly totals for management',  TRUE),
+  ('Monthly Failed Report', 'All failed transactions of the month',       TRUE),
+  ('Retired Legacy Report', 'Kept for history, no longer scheduled',      FALSE);
 
 -- --------------------------------------------------------------------- query
 -- Task 1 carries three active queries on purpose: one task produces several CSV
--- files in a single run, each named from the task's output_prefix.
-INSERT INTO query (task_id, query_text, db_target, version_no, is_active) VALUES
-  (1, 'SELECT txn_id, txn_date, customer, channel, amount, status FROM total_transaction ORDER BY txn_date', 'core_db', 2, TRUE),
-  (1, 'SELECT channel, COUNT(*) AS txn_count, SUM(amount) AS total_amount FROM total_transaction GROUP BY channel ORDER BY channel', 'core_db', 1, TRUE),
-  (1, 'SELECT customer, SUM(amount) AS total_amount FROM total_transaction WHERE status = ''SUCCESS'' GROUP BY customer ORDER BY total_amount DESC', 'reporting_db', 1, TRUE),
-  (1, 'SELECT * FROM total_transaction', 'core_db', 1, FALSE),
-  (2, 'SELECT channel, COUNT(*) AS txn_count, SUM(amount) AS total_amount FROM total_transaction WHERE txn_date >= CURRENT_DATE - 7 GROUP BY channel', 'reporting_db', 1, TRUE),
-  (3, 'SELECT txn_id, txn_date, customer, amount FROM total_transaction WHERE status = ''FAILED'' ORDER BY txn_date', 'core_db', 1, TRUE),
-  (4, 'SELECT 1', 'core_db', 1, FALSE);
+-- files in a single run. Each query names its own file via output_name; the run
+-- appends _<yyyymmdd>.csv. A blank output_name falls back to query_<query_id>.
+INSERT INTO query (task_id, query_text, output_name, db_target, version_no, is_active) VALUES
+  (1, 'SELECT txn_id, txn_date, customer, channel, amount, status FROM total_transaction ORDER BY txn_date', 'txn_detail',    'core_db',      2, TRUE),
+  (1, 'SELECT channel, COUNT(*) AS txn_count, SUM(amount) AS total_amount FROM total_transaction GROUP BY channel ORDER BY channel', 'txn_by_channel', 'core_db', 1, TRUE),
+  (1, 'SELECT customer, SUM(amount) AS total_amount FROM total_transaction WHERE status = ''SUCCESS'' GROUP BY customer ORDER BY total_amount DESC', 'customer_totals', 'reporting_db', 1, TRUE),
+  (1, 'SELECT * FROM total_transaction', NULL,             'core_db',      1, FALSE),
+  (2, 'SELECT channel, COUNT(*) AS txn_count, SUM(amount) AS total_amount FROM total_transaction WHERE txn_date >= CURRENT_DATE - 7 GROUP BY channel', 'weekly_channel', 'reporting_db', 1, TRUE),
+  (3, 'SELECT txn_id, txn_date, customer, amount FROM total_transaction WHERE status = ''FAILED'' ORDER BY txn_date', 'failed_txn',    'core_db',      1, TRUE),
+  (4, 'SELECT 1', NULL, 'core_db', 1, FALSE);
 
 -- ------------------------------------------------------------------ schedule
 -- day_spec: unused for DAILY, weekday name for WEEKLY, day-of-month for MONTHLY.

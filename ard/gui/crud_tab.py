@@ -192,6 +192,15 @@ class CrudTab(ttk.Frame):
             if problem:
                 messagebox.showwarning("Query not allowed", problem, parent=self)
                 return
+            # Output name is the CSV file-name prefix; warn (don't block) when it
+            # is blank, since the file then falls back to query_<query_id>.
+            if not (values.get("output_name") or "").strip():
+                if not messagebox.askyesno(
+                    "No output name",
+                    "This query has no Output name, so its CSV will be named "
+                    "query_<query_id>_<yyyymmdd>.csv.\n\nSave anyway?",
+                    parent=self):
+                    return
 
         try:
             with db.connect() as conn:

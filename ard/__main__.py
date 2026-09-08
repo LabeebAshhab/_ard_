@@ -22,16 +22,17 @@ def setup_logging(verbose: bool) -> None:
     )
 
 
-def init_db(with_seed: bool) -> None:
-    """Created the schema and loaded the dummy test data."""
-    files = [BASE_DIR / "sql" / "schema.sql"]
-    if with_seed:
-        files.append(BASE_DIR / "sql" / "seed_data.sql")
+def init_db() -> None:
+    """Create the schema - the 6 empty ARD tables.
+
+    Dummy/test data is loaded separately by `python seed.py`; the operational
+    code deliberately holds no test data.
+    """
+    path = BASE_DIR / "sql" / "schema.sql"
     with db.connect() as conn:
-        for path in files:
-            conn.execute(Path(path).read_text(encoding="utf-8"))
-            conn.commit()
-            print(f"applied {path.name}")
+        conn.execute(Path(path).read_text(encoding="utf-8"))
+        conn.commit()
+        print(f"applied {path.name}")
 
 
 def show_status() -> None:
@@ -57,7 +58,6 @@ def show_status() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(prog="ard", description="Automated Report Delivery")
     parser.add_argument("--init-db", action="store_true", help="create the 6 tables")
-    parser.add_argument("--seed", action="store_true", help="load dummy data (with --init-db)")
     parser.add_argument("--poll-once", action="store_true", help="run one scheduler tick")
     parser.add_argument("--run-task", type=int, metavar="ID",
                         help="run one task now, ignoring its schedule time")
@@ -72,7 +72,7 @@ def main() -> int:
         from .gui import main as gui_main
         return gui_main()
     if args.init_db:
-        init_db(args.seed)
+        init_db()
         return 0
     if args.status:
         show_status()

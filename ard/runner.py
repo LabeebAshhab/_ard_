@@ -35,9 +35,11 @@ def run_task(conn: psycopg.Connection, task: dict, schedule_id: int) -> dict:
             result_sets = db.run_source_query(
                 config.dsn_for_target(query["db_target"]), query["query_text"]
             )
-            csv_path, row_count = export_to_csv(
-                result_sets, task["output_prefix"], query["query_id"]
-            )
+            # The query's own Output name drives the CSV file name; if left blank
+            # we fall back to query_<query_id> so the file still has a unique name.
+            file_name = (query.get("output_name") or "").strip() or \
+                f"query_{query['query_id']}"
+            csv_path, row_count = export_to_csv(result_sets, file_name)
             db.log_export_success(conn, log_id, str(csv_path), row_count)
             attachments.append(csv_path)
             exported_log_ids.append(log_id)
